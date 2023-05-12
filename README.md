@@ -4,7 +4,7 @@ Rules for writing clear, idiomatic Go code.
 
 ## Formatting
 
-All Go code in the Bequant projects must be formatted with gofmt before pushing to repository.
+All Go code in the projects must be formatted with gofmt before pushing to repository.
 
 ## Naming
 ### Variables
@@ -35,7 +35,7 @@ func toType() {}
 ```
 
 ### Getters
-It's neither idiomatic nor necessary to put Get into the getter's name.
+It's neither idiomatic nor necessary to put 'Get' into the getter's name.
 Do:
 ```go
 obj.Property()
@@ -45,7 +45,7 @@ Don't:
 obj.GetProperty()
 ```
 ### Interfaces
-By convention, one-method interfaces are named by the method name plus an -er (-or) suffix or similar modification 
+By convention, one-method interfaces are named by the method name plus an '-er' ('-or') suffix or similar modification 
 to construct an agent noun: Reader, Writer, Formatter, CloseNotifier etc.
 
 Do:
@@ -54,7 +54,7 @@ type Cleaner interface {}
 ```
 Don't:
 ```go
-type ICleanAdapter interface{}
+type ICleanClient interface{}
 ```
 ### Mixed caps
 The convention in Go is to use MixedCaps or mixedCaps rather than underscores to write multiword names. 
@@ -75,6 +75,7 @@ if err != nil {
 }
 ```
 Also you'll find that when an if statement doesn't flow into the next statement—that is, the body ends in break, continue, goto, or return—the unnecessary else is omitted.
+
 ## Loops handling
 Iteration over structure that contains pointer may lead to bugs. To avoid them redeclare value inside the loop scope.
 
@@ -95,6 +96,7 @@ for _, val := range array {
 ```
 ## Labeling (GOTO)
 There's no point to use them. Just don't.
+
 ## Type asserting, type switching
 Golang code will panic if type assertion doesn't protected with type check.
 
@@ -132,6 +134,7 @@ if !ok {
 
 }
 ```
+
 ## Deferring
 Go's defer statement schedules a function call (the deferred function) to be run immediately before the function executing the defer returns. It's an unusual but effective way to deal with situations such as resources that must be released regardless of which path a function takes to return. The canonical examples are unlocking a mutex or closing a file. 
 One of the most often us cases for deferring function call is mutex releasing, closing open files.
@@ -191,7 +194,7 @@ newSlice = append(ab, c) // append creates to many memory allocations if slice c
 }
 ```
 
-Returning part of slice from function may lead to memory leak.
+Returning chunk of the slice from function may lead to memory leak.
 
 Do:
 ```go
@@ -204,6 +207,38 @@ return newSlice
 ```
 
 Do not use pointers to slices. Slices are already reference types which point to an underlying array. If you want a function to modify a slice, then return that slice from the function, rather than passing a pointer.
+
+### sync.Pool
+
+Frequent allocation and recycling of memory will cause a heavy burden to GC. 'sync.Pool' can cache objects that are not used temporarily and use them directly (without reallocation) when they are needed next time. This can potentially reduce the GC workload and improve performance.
+
+Usage:
+
+```go
+// A dummy struct
+type Person struct {
+	Name string
+}
+
+// Initializing pool
+var personPool = sync.Pool{
+	// New optionally specifies a function to generate
+	// a value when Get would otherwise return nil.
+	New: func() interface{} { return new(Person) },
+}
+
+// Main function
+func main() {
+	// Get hold of an instance
+	newPerson := personPool.Get().(*Person)
+	// Defer release function
+	// After that the same instance is 
+	// reusable by another routine
+	defer personPool.Put(newPerson)
+
+	// Using the instance
+	newPerson.Name = "Jack"
+```
 
 ### Buffering
 Doing potentially expensive allocations of bytes.Buffer and []byte use of Buffer.Grow, Buffer.ReadFrom, oi.ReadAll, io.Copy.
@@ -314,6 +349,11 @@ for err := range errChan {
 	// error handling
 }
 ```
+## 'Conc' tool
+
+Please use 'https://github.com/sourcegraph/conc' tool for structured concurrency in go, making common tasks easier and safer
+
+## Questions to yourself
 
 Always prefer synchronous functions by default. Async calls are hard to get right. They have no control over goroutine lifetimes and introduce data races. If you think something needs to be asynchronous, measure it and prove it. Ask these questions:
 
@@ -430,10 +470,10 @@ Don't:
 ```go
 return err // returning only first error or
 
-return fmt.Errorf("%w %w %w", err, err2, err3) // wrapping error or contcat error messages
+return fmt.Errorf("%w %w %w", err, err2, err3) // wrapping error or concat error messages
 ```
 
-## Panic using
+## Panic usage
 For this purpose, there is a built-in function panic that in effect creates a run-time error that will stop the program (but see the next section). 
 Use it only if you need to stop your service at starting level if some of the crucial requirements weren't completed. This will help to notify developers team about problem.
 
@@ -507,7 +547,7 @@ logger.Errorf("handler: %v", err)
 ```
 
 ## Configuring the app
-For DevOps convenience make the app be able to parse environment variables along with command
+For Dev Ops convenience make the app be able to parse environment variables along with command
 line parameters.
 
 Do:
@@ -547,15 +587,22 @@ func main() {
 }
 ```
 
+Also for Dev Ops convenience while setting up you app in Kubernetes please use `https://github.com/uber-go/automaxprocs` for automated matching Linux container CPU quota.
+Example:
+
+```go
+import _ "go.uber.org/automaxprocs"
+```
+
 # Designing the app
 Please design your app according to [12 Factor App](https://12factor.net/)
 
 # App layout
-At Bequant commonly used below layout for Golang services:
+At commonly used below layout for Golang services:
     
     |- cmd/app // starting point of certain app
     |- internal // private packages that shouldn't be exported
-    |- external // bequant packages that were imported
+    |- external // packages that were imported
     |- domain // package for business logic object definitions
     |- dto // package for data transfer object definitions (may be merged in 'domain' package)
     |- client // package for sending data over the network
@@ -574,7 +621,7 @@ At Bequant commonly used below layout for Golang services:
     |- README.md
 
 # PR preparing
-Any PR that can potentially have a performance impact on the Bequant codebase is encouraged to have a performance review. 
+Any PR that can potentially have a performance impact on the codebase is encouraged to have a performance review. 
 For more information, please see this link. The following is a brief list of indicators that should to undergo a performance review:
 
     - New features that might require benchmarks and/or are missing load-test coverage.
